@@ -145,7 +145,7 @@ func runOnePattern(r result) {
 		fmt.Println(sample)
 	}
 
-	proceed := input("proceed? y/n")
+	proceed := input("proceed? y/n ")
 
 	if strings.ToLower(proceed) != "y" {
 		return
@@ -178,5 +178,5 @@ func input(label string) string {
 	v, err := reader.ReadString('\n')
 	checkError(err, 1)
 
-	return v
+	return strings.Trim(v, "\n")
 }
