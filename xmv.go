@@ -9,6 +9,7 @@ import (
 	"os/exec"
 	"strconv"
 	"strings"
+	"sync"
 	"time"
 )
 
@@ -84,20 +85,35 @@ func findZSH() string {
 func runAllPatterns() []result {
 	successfulPatterns := make([]result, 0)
 
+	var wg sync.WaitGroup
+	ch := make(chan result, 0)
+
 	for oldPattern, newPattern := range config.Patterns {
-		output, exitCode, _ := runZSH(fmt.Sprintf(RunAllPatternsCmd, oldPattern, newPattern))
+		wg.Add(1)
 
-		if exitCode != 0 {
-			continue
-		}
+		go func(oldPattern, newPattern string) {
+			defer wg.Done()
+			output, exitCode, _ := runZSH(fmt.Sprintf(RunAllPatternsCmd, oldPattern, newPattern))
 
-		samples := strings.Split(output, "\n")
-		successfulPatterns = append(successfulPatterns, result{
-			oldPattern: oldPattern,
-			newPattern: newPattern,
-			samples:    samples,
-		})
+			if exitCode != 0 {
+				return
+			}
+
+			ch <- result{
+				oldPattern: oldPattern,
+				newPattern: newPattern,
+				samples:    strings.Split(output, "\n"),
+			}
+		}(oldPattern, newPattern)
 	}
+
+	go func() {
+		for result := range ch {
+			successfulPatterns = append(successfulPatterns, result)
+		}
+	}()
+
+	wg.Wait()
 
 	return successfulPatterns
 }
